@@ -67,5 +67,132 @@ The tests are specified in child properties of user-defined names below the top 
 
 [code, role="css-manpage"]
 ----
-include::{appdir}/MANPAGE.txt[]
+SHOTPLAN(8)             System Administration Utilities            SHOTPLAN(8)
+
+NAME
+       Shotplan  -  Test  plan execution tool providing screenshots and videos
+       reporting
+
+SYNOPSIS
+       shotplan OPTIONS [ <SHOTPLAN PATH> [ <PLAN NAME> [ ANY ] ] ]
+
+       Arguments:
+
+       <plan file path>
+
+              The shotplan file where the tests are defined (YAML format)
+
+       [<plan name>]
+
+              Optional: the name of the test (shot) plan to  execute  (instead
+              of all).
+
+       [<any string>]
+
+              Optional:  the providing of any third argument indicates only to
+              run the last step of the specified shot plan.
+
+       OPTIONS:
+
+       --cat
+
+              List available categories
+
+       --debug
+
+              Activates debug logs
+
+       --force-defaults
+
+              Forces default values for required user input to be used and  do
+              not ask user to enter a value
+
+       --from =STRING
+
+              The test plan from which to start the test execution
+
+       -C =STRING
+
+              Test category to run
+
+       -F, --filelist
+
+              Prints  the  list  of  output  files (images and videos) as they
+              would have been generated during plan execution.
+
+       -M, --manpage
+
+              Generates command samples for manpages based on the shot plan
+
+       -P, --planids
+
+              Prints the logical Ids of all defined test plans.
+
+       -R, --report
+
+              Switch on generation of the AsciiDoc report fragments which  in‐
+              clude screenshots and videos
+
+       -T, --no-report
+
+              Switch off generation of the AsciiDoc report fragments which in‐
+              clude screenshots and videos (default)
+
+       -a
+
+              Switch off interactivity
+
+       -i
+
+              Switch on interactivity (default)
+
+       -y
+
+              Assume 'Yes' when prompted for confirmation
+
+DESCRIPTION
+       shotplan is a test execution and reporting tool which enables to define
+       and execute tests launched and controlled by script.
+
+       The tests to run and the control scripts are defined in a YAML configu‐
+       ration file where the sequence of tests are defined and  programmed  in
+       script.  The YAML file is also called test plan or shot plan, and is by
+       convention named .
+
+       A test plan splits into a sequence of  test  cases  (also  called  test
+       plans), in which a sequence of test steps are defined.
+
+       shotplan  reports  about each executed test and its result on the stan‐
+       dard output, including a dated test banners indicating version and  re‐
+       vision control numbers of tested items, test tools and dependencies.
+
+       Shotplan takes its name by the fact that the tool is capable of produc‐
+       ing screenshots and video captures for executed tests.
+
+EXAMPLES
+       Testing with reporting (screenshots)
+
+              $ shotplan --report
+
+       Testing without reporting
+
+              $ shotplan --T
+
+       Testing starting from a certain plan, use option --from, e.g
+
+              $ shotplan --from-init
+
+AUTHOR
+       Written by Michel MEHL
+
+REPORTING BUGS
+       Report bugs to <michel.mehl@slashetc.fr>
+
+COPYRIGHT
+       Copyright © 2026 Michel MEHL. All rights reserved.
+
+       License terms written down in file LICENSE.txt
+
+Shotplan 1.0.0                   juillet 2026                      SHOTPLAN(8)
+
 ----
