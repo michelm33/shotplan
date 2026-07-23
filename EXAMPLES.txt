@@ -1,0 +1,22 @@
+Testing with reporting (screenshots)
+
+   $ shotplan --report 
+
+Testing without reporting
+
+   $ shotplan --T
+
+Testing starting from a certain plan, use option --from, e.g
+
+   $ shotplan --from-init
+
+To test release version inside a docker
+
+  # ON HOST: this starts container and release package are auto installed
+   $ shotplan --C
+
+  # INSIDE CONTAINER execute actual shot plan , interactive
+   $ test_arcv --force-defaults -C all -y -T -i
+
+  # INSIDE CONTAINER execute actual shot plan in automatic mode
+   $ test_arcv --force-defaults -C all -y -T -a

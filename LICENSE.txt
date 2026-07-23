@@ -1,0 +1,35 @@
+"shotplan" SOFTWARE LICENSE
+
+Copyright (c) 2024-2026 Michel Mehl.
+All rights reserved - Tous droits réservés.
+
+shotplan, a test plan execution tool providing screenshots and videos reporting, 
+herein referred to as the 'Software', inclusive all executables, 
+configuration files, documentation, and related supplied tools, can be used free of charge 
+under the terms of this License and the provisions described therein.
+
+THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL 
+THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR 
+OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, 
+ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR 
+OTHER DEALINGS IN THE SOFTWARE.
+
+Whilst the Software can be used free of charge, it remains the full ownership of the copyright holder (the Author).
+No commercial distribution, no reselling, no sublicensing, no derived commercial work are allowed 
+to be made of the Software by the Licensee without an express written agreement with the copyright holder, 
+whatsoever it regards the Software itself or any source code, documentation, tools part of it. 
+The Software is allowed to be integrated into an automated process, provided : 
+a) a prior notification and description of the use case is sent by the requesting company or institution
+ (the Requester) to the Author, 
+b) an express agreement is sent to the Requester by the Author.
+Upon agreement, the Requester grants the Author to use its legal name along with the use made of the Software 
+for its promotion.
+
+The Licensee may adapt the Software for its own personal or corporate use only, but it is not allowed to 
+make a new public release of the Software. All aforementioned restrictions remain applicable
+in this case too.
+
+This agreement is made and shall be construed in accordance with the laws of France. 
+

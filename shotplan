@@ -1,0 +1,882 @@
+#!/bin/bash
+###############################################################################
+#
+# Shotplan
+#
+# Copyright (c) 2026 Michel MEHL. All rights reserved.
+#
+# ------------------------------------------------------------------------------
+#
+# This file implements the Shotplan to generate shell script app skeletons
+# using the shell-api library. 
+#
+# It includes a sub-skeleton file for managing options, as well as one including
+# help functions to enable packaging with dpkg.
+#
+# ------------------------------------------------------------------------------
+#
+# Report bugs to michel.mehl@slashetc.fr
+#
+###############################################################################
+
+# SHOTPLAN__VARS is aimed at storing variables specific to this app
+# to avoid conflicts with other vars should this file be included elsewhere
+declare -A SHOTPLAN__VARS
+SHOTPLAN__VARS["MYDIR"]=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
+
+SHOTPLAN__VARS["SRC_DIRNAME"]="${BASH_SOURCE[0]%/*}" # "$(dirname ${BASH_SOURCE[0]})"
+SHOTPLAN__VARS["MYDIR"]="$(readlink -f "${SHOTPLAN__VARS["SRC_DIRNAME"]}")"
+SHOTPLAN__VARS["SHELLAPI_DIR"]="../shell-api"
+#GENPAGE__VARS["configFile"]=""     # Could be used if app requires a yaml configuration file as argument
+
+if [[ ! -v __SHELL_API_CORE_LOADED__ ]]; then
+    if [ -v ENV_SHELL_API ] ; then
+            if [ -f "${ENV_SHELL_API}/shell-api-core.sh" ] ; then
+                    source "${ENV_SHELL_API}/shell-api-core.sh" "Shotplan"
+            else
+                    echo "Invalid path specified by variable ENV_SHELL_API : ${ENV_SHELL_API}/shell-api-core.sh not found ">&2
+                    exit -1
+            fi
+    else
+            if [ -f "${SHOTPLAN__VARS["MYDIR"]}/shell-api/shell-api-core.sh" ] ; then
+                    source "${SHOTPLAN__VARS["MYDIR"]}/shell-api/shell-api-core.sh" "Shotplan"
+            elif [ -f "${SHOTPLAN__VARS["MYDIR"]}/../shell-api/shell-api-core.sh" ] ; then
+                    source "${SHOTPLAN__VARS["MYDIR"]}/../shell-api/shell-api-core.sh" "Shotplan"
+            else
+                    echo "Could not find shell-api. Please set ENV_SHELL_API to the root folder of shell api or ensure shell-api is readable from ${SHOTPLAN__VARS["MYDIR"]} or ${SHOTPLAN__VARS["MYDIR"]}/.. ">&2
+                    exit -1
+            fi
+    fi
+fi
+
+
+eval $_loadm<<<'shell-api-yaml'
+eval $_loadm<<<'shell-api-packing'
+eval $_loada<<<'shotplan__vars.sh'
+eval $_loada<<<'shotplan__options.sh'
+eval $_loada<<<'shotplan__help.sh'
+eval $_loada<<<'shotplan_lib.sh'
+
+
+Shotplan__cleanup()
+{
+    File__deleteAllTempDirs
+    File__deleteAllTempFiles
+
+    # Run the post test script
+    if ${SHOTPLAN__VARS["executePlan"]} && [ ! -z "${SHOTPLAN__VARS["__posttestScript"]}" ] ; then
+        _log_high "Executing '${SHOTPLAN__VARS["__posttestScript"]}'"
+        source  "${SHOTPLAN__VARS["__posttestScript"]}" 
+        #[ $? -eq 0 ] || exit -10 #"Post-test script ${SHOTPLAN__VARS["__posttestScript"]} failed"
+    fi
+}
+
+Shotplan__parseArgs() {
+
+	local argc=0
+	local arg_cnt=0
+
+	_parseFromArgToVars \
+        SHOTPLAN__OPTION_LIST_DESC \
+        SHOTPLAN__OPTION_LIST_ARGS \
+        SHOTPLAN__OPTION_LIST_ACTI \
+        SHOTPLAN__OPTION_LIST_VALS \
+        argc arg_cnt "$@"
+}
+
+Shotplan__parseArgsHandleOptionLessArg() {
+	local index=$1
+	shift
+	local value="$@"
+
+	case ${index} in
+			0) SHOTPLAN__VARS["PLAN_FILE_PATH"]="$value"
+				return 0 ;; 
+			1) SHOTPLAN__VARS["PLAN"]="$value"
+				return 0 ;; 
+			2) SHOTPLAN__VARS["ONLY_LAST_PLAN"]=true
+				return 0 ;; 
+			*) return 1 ;;
+	esac        
+	return 1 # we should not reach this end
+
+}
+
+Shotplan__recurseReadForNullsThrougInheritance()
+{
+    local plan="$1"
+    local -n propval="$3"
+    local propname="$2"
+    local cfgPath=".stderr_handling.$plan"
+    local planCategory="$4"
+
+    YAML__get "$cfgPath.${propname}" propval
+    if [ "$propval" = null ] || [ -z "$propval" ]  ; then
+        YAML__get "$cfgPath.copy" inheritedPlan
+        _log_dbg "Shotplan__recurseReadForNullsThrougInheritanc inheritedPlan? $inheritedPlan"
+        if [ "$inheritedPlan" != "null" ] && [ ! -z "$inheritedPlan" ] ; then
+            Shotplan__recurseReadForNullsThrougInheritance "${inheritedPlan}" "${propname}" "${!propval}"
+            if [ $? -ne 0 ] ; then
+                echo "No value found for property '$propname' in the inherited plans." >&2
+                return 1
+            fi
+        else
+            #_log_dbg "categories for $plan: '$planCategory'"
+            local categories=(${planCategory})
+            local categ 
+            for categ in "${categories[@]}" ; do
+                #_log_dbg "Shotplan__recurseReadForNullsThrougInheritanc for categ $categ"
+                local stderrHandlingForCategory
+                if YAML__get ".stderr_handling.apply-to-category-$categ" stderrHandlingForCategory ; then
+                    #_log_dbg "Shotplan__recurseReadForNullsThrougInheritanc FOUND $stderrHandlingForCategory"
+                    if Shotplan__recurseReadForNullsThrougInheritance "${stderrHandlingForCategory}" "${propname}" "${!propval}" "" ; then
+                        return 0
+                    fi
+                fi
+            done
+            if ! $stderrHandlingByCategoryFound ; then
+                echo "No value found for property '$propname' and no in inherited plan defined for $plan." >&2
+                return 1
+            else
+                return 0
+            fi
+        fi
+    fi
+
+    return 0
+}
+
+readOverridingTermSize()
+{
+    local ymlPath="$1"
+    local -n __out_termh=$2
+    local -n __out_termw=$3
+    local planTermH
+    YAML__get "$ymlPath._term-height" planTermH
+    if [ "$planTermH" != null ] && [ ! -z "$planTermH" ] ; then
+        __out_termh=$planTermH
+    fi
+    local planTermW
+    YAML__get "$ymlPath._term-width" planTermW
+    if [ "$planTermW" != null ] && [ ! -z "$planTermW" ] ; then
+        __out_termw=$planTermW
+    fi
+}
+
+Shotplan__loadDep()
+{
+    if ! Args__checkCount ${FUNCNAME[0]} 1 "$#" "Usage: <dependency name>"; then return 1; fi
+
+    # By default, attempts to install an APT package of the passed name
+    Pkg__install "$1" "" apt 
+}
+
+Shotplan__main() {
+	_parseArgs "$@"
+	_initLogs
+
+    _loadDep "gettext-base"
+
+    if [ -z "${SHOTPLAN__VARS["PLAN_FILE_PATH"]}" ] ; then
+            _susage "No plan file specified!"
+    elif [ -f "${SHOTPLAN__VARS["PLAN_FILE_PATH"]}" ] ; then
+        if ! YAML__setFile "${SHOTPLAN__VARS["PLAN_FILE_PATH"]}" true ; then
+            _susage "${SHOTPLAN__VARS["PLAN_FILE_PATH"]} not found"
+        fi
+    else
+        _log_warn "Plan file '${SHOTPLAN__VARS["PLAN_FILE_PATH"]}' does not exist. Taking default one '${SHOTPLAN__VARS["MYDIR"]}/shotplan.yml'"
+        if ! YAML__setFile "${SHOTPLAN__VARS["MYDIR"]}/shotplan.yml" true; then
+            _susage "${SHOTPLAN__VARS["MYDIR"]}/shotplan.yml not found"
+        fi
+    fi
+    #YAML__dumpAll ; _quit ""
+    local isNotRunTestFunction=true
+    SHOTPLAN__VARS["executePlan"]=true          # This may be true for other functions that do actually not run the tests
+    YAML__get ".lang" dispLang
+    export LANG="$dispLang"
+
+    #local __testbenchRevision="?"
+    #local __appRevision="?"
+    local __appexedirEnvVar=""
+    YAML__get ".testbench" __testbench
+    YAML__get ".application" __app
+    YAML__get ".application_exedir_envvar" __appexedirEnvVar # This gives the name of the env variable holding the path to the application repository    
+    YAML__get ".window_id" window_id
+    YAML__get ".image_folder" image_folder
+    YAML__get ".image_folder2" image_folder2
+    YAML__get ".output-dir" outputDir
+    YAML__get ".term-height" termheight
+    YAML__get ".term-width" termwidth
+    local __preparationScript=""
+    YAML__get ".pretest-script" __preparationScript
+    YAML__get ".posttest-script" SHOTPLAN__VARS["__posttestScript"]
+
+    local environment
+    YAML__get ".environment" environment
+
+    local getExeDir="\$${__appexedirEnvVar}"
+    local appExeDir="$(echo "$getExeDir"|envsubst)"
+
+    # Get app revision
+    if ${SHOTPLAN__VARS["GENERATE_FOR_MANPAGE"]} || ${SHOTPLAN__VARS["GENERATE_OUTPUTFILE_LIST"]} ||  ${SHOTPLAN__VARS["GENERATE_PLANID_LIST"]}  ; then
+        isNotRunTestFunction=false
+    fi
+
+    if ! ${SHOTPLAN__VARS["GENERATE_REPORT"]} || $isNotRunTestFunction  ; then
+        window_id="unknown"
+    else
+        read window_id < <(wmctrl -lp|tail -n1|awk -F' ' '{print $1}')
+    fi
+    #exit 0
+
+    local planDirName="$(dirname "${SHOTPLAN__VARS["PLAN_FILE_PATH"]}")"
+    if [ ! -z "${__preparationScript}" ] ; then
+        __preparationScript="${planDirName}/${__preparationScript}"
+        if [ ! -f "${__preparationScript}" ] ; then
+            _exit -9 "Test preparation script ${__preparationScript} does not exist"
+        fi
+    fi
+    if [ ! -z "${SHOTPLAN__VARS["__posttestScript"]}" ] ; then
+        local planDirName="$(dirname "${SHOTPLAN__VARS["PLAN_FILE_PATH"]}")"
+        SHOTPLAN__VARS["__posttestScript"]="${planDirName}/${SHOTPLAN__VARS["__posttestScript"]}"
+        if [ ! -f "${SHOTPLAN__VARS["__posttestScript"]}" ] ; then
+            _exit -9 "Post test script ${SHOTPLAN__VARS["__posttestScript"]} does not exist"
+        fi
+    fi
+
+
+    local useInstallRelease=false
+    YAML__get_bool ".release" useInstallRelease
+:<<'EOF'
+    if $useInstallRelease ; then
+        export PATH=/usr/bin/mountpilot/:$PATH
+        _log_warn "PATH was set to use the current install release version to be tested:"
+         mp -v         
+    fi
+EOF
+
+    allSelectedPlanNames=()
+
+    if ${SHOTPLAN__VARS["LIST_CATEGORY"]} || ${SHOTPLAN__VARS["LIST_PLAN_IDS"]} ; then
+	    allSelectedPlanNames=($(YAML__keys ".shotplan"))
+        SHOTPLAN__VARS["executePlan"]=false
+    elif [ ! -z "${SHOTPLAN__VARS["PLAN"]}" ]  ; then
+        allSelectedPlanNames+=("${SHOTPLAN__VARS["PLAN"]}")
+    elif  [ ! -z "${SHOTPLAN__VARS["CATEGORY"]}" ] ; then
+	    allPlanNames=($(YAML__keys ".shotplan"))
+        #echo "ALL PLAN NAMES= ${allPlanNames[@]}"
+        for selectedPlanName in "${allPlanNames[@]}" ; do
+            YAML__get ".shotplan.${selectedPlanName}._categories[]" PLAN_CATEG
+            #echo "READ CATEG: $PLAN_CATEG  =? ${SHOTPLAN__VARS["CATEGORY"]}"
+            Str__trim "$PLAN_CATEG" PLAN_CATEG
+            #if [ "$PLAN_CATEG" = "${SHOTPLAN__VARS["CATEGORY"]}" ] ; then
+
+            if ${SHOTPLAN__VARS["GENERATE_FOR_MANPAGE"]} ; then
+                local ignForManage
+                if YAML__get_bool ".shotplan.${selectedPlanName}._ignore-for-manpage" ignForManage 2>/dev/null; then
+                    if [ "$ignForManage" != null ] && [ ! -z "$ignForManage" ] ; then
+                        if $ignForManage ; then
+                            continue
+                        fi
+                    fi
+                fi
+            fi
+
+            if [ "${SHOTPLAN__VARS["CATEGORY"]}" = "all" ] ; then
+                allSelectedPlanNames+=("$selectedPlanName")
+            elif Array__contains_by_string "$PLAN_CATEG" "${SHOTPLAN__VARS["CATEGORY"]}" ; then
+                allSelectedPlanNames+=("$selectedPlanName")
+            fi
+        done
+    else
+        _susage "No plan and no plan category specified as argument"
+    fi
+    
+    #echo "ALL PLAN NAMES= ${allSelectedPlanNames[@]}"
+
+    # If manpages are generated, outputDir is used to set the output file path in 'output'
+    # For below, 'output' is set to /dev/null. So nevermind of valid 'outputDir',
+    # Same for image dirs, because no report are generated
+    # If category are listed, all these dirs are also irrelevant
+    if ${SHOTPLAN__VARS["executePlan"]} && ${SHOTPLAN__VARS["GENERATE_REPORT"]} && ! ${isNotRunTestFunction} ; then
+        trapDirExits "$outputDir"
+        trapDirExits "$image_folder"
+        trapDirExits "$image_folder2"
+    fi
+
+    #echo "allSelectedPlanNames: ${allSelectedPlanNames[@]}"
+    if ${SHOTPLAN__VARS["executePlan"]} ; then
+        if [ ${#allSelectedPlanNames[@]} -gt 1 ] ; then
+            allPlanNames="${allSelectedPlanNames[@]}"
+            echo
+            local actionName=""
+            if ${SHOTPLAN__VARS["GENERATE_FOR_MANPAGE"]} ; then
+                #actionName="Only generate the manpage lines for the following test plan(s) (no test execution, no screenshot)"
+                actionName=""
+                echo "*EXAMPLES*" # First output for real manpages
+            elif ! $isNotRunTestFunction ; then
+                :
+            elif ! ${SHOTPLAN__VARS["GENERATE_REPORT"]} ; then
+                actionName="Only execute the tests for the following test plan(s) (no screenshot)"
+            else
+                cat <<'EOF' >&2
+
+*******************************************************************
+Going to run tests. 
+
+Please check ensure the following test environment is setup:
+
+EOF
+                local envItem
+                for envitem in "${environment[@]}" ; do
+                    echo "$envitem"
+                done
+                cat <<'EOF'
+
+*******************************************************************
+EOF
+
+                if ${SHOTPLAN__VARS["GENERATE_REPORT"]} ; then
+                    _log_warn "Existing screenshot and reports are going to be OVERWRITTEN"
+                fi
+                actionName="Execute with the following test plans and generate screenshots for them?"
+            fi
+            if [ ! -z "$actionName" ] ; then
+                if ! Input__confirm "${actionName}? $allPlanNames" ; then
+                    _exit -1 "Aborted"
+                else
+                    echo
+                    echo
+                fi
+            fi
+        fi
+    fi
+
+    # Run the test preparation commands
+    if [ ! -z "${__preparationScript}" ] && ${SHOTPLAN__VARS["executePlan"]} && ! ${SHOTPLAN__VARS["GENERATE_FOR_MANPAGE"]} && ! ${SHOTPLAN__VARS["GENERATE_OUTPUTFILE_LIST"]} ; then    
+        #_log_vars __preparationScript
+        #_log_high "Executing ${__preparationScript}"
+        source  "${__preparationScript}" 
+        [ $? -eq 0 ] || _exit -10 "Test preparation script ${__preparationScript} failed"
+    fi
+
+#exit 0
+    local overall_result=true # = OK
+    declare -A plan_results
+    local availableCategories=()
+    declare -A categoryRegistered
+    local veryFirstStep=true
+    local output=""
+
+    if [ ! -z "${SHOTPLAN__VARS["START_PLAN"]}" ] ; then
+        if ! Array__contains allSelectedPlanNames "${SHOTPLAN__VARS["START_PLAN"]}" ; then
+            _exit -31 "Start plan '${SHOTPLAN__VARS["START_PLAN"]}' specified through '--from' option does not exist"
+        fi
+    fi
+
+    for selectedPlanName in "${allSelectedPlanNames[@]}" ; do
+        YAML__get ".shotplan.${selectedPlanName}._categories[]" PLAN_CATEG
+
+        if ! YAML__get ".shotplan.${selectedPlanName}" selectedPlan ; then
+            _susage "Failed to read .shotplan.${selectedPlanName}"
+        fi
+
+        # Update known category catalog
+        local planCategories=(${PLAN_CATEG})
+        local planCat=""
+        for planCat in "${planCategories[@]}" ; do
+            if [ -z "${categoryRegistered["$planCat"]}" ] ; then
+                categoryRegistered["$planCat"]="yes"
+                availableCategories+=("$planCat")   
+            fi
+        done
+
+        if ${SHOTPLAN__VARS["LIST_PLAN_IDS"]} ; then
+            echo "${selectedPlanName}"
+        fi
+
+        if ! ${SHOTPLAN__VARS["executePlan"]} ; then
+            continue
+        fi
+
+        if [ ! -z "${SHOTPLAN__VARS["START_PLAN"]}" ] ; then
+            if [ "${selectedPlanName}" = "${SHOTPLAN__VARS["START_PLAN"]}" ] ; then
+                _log ""
+                _log "'Reached start plan: ${selectedPlanName}'"
+                sleep 1
+                #read -n1 -r -p "Press a key to start test execution or CTRL-C" _press2toContinue
+
+                SHOTPLAN__VARS["START_PLAN"]=""
+            else
+                _log "'${selectedPlanName}' skipped'"
+                continue
+            fi
+        fi
+
+:<<'EOF'
+        # See comment below why it is commented out
+        if [ "$selectedPlan" = null ] || [ -z "$selectedPlan" ] ; then
+            _susage "Plan '${selectedPlanName}' is not defined in configuration."
+        fi
+EOF
+
+        planCfgPath=".shotplan.${selectedPlanName}"
+
+        # Test existence of plan by reading title, because the YAML__readAll does not
+        # store any value for intermediate YAML nodes, only for leaf values
+        YAML__get "$planCfgPath._title" PLAN_TITLE
+        if [ "$PLAN_TITLE" = null ] || [ -z "$PLAN_TITLE" ] ; then
+            _susage "Plan '${selectedPlanName}' is not defined in configuration."
+        fi
+#_log_vars PLAN_TITLE
+        keys=($(YAML__keys "$planCfgPath"))
+        if ${SHOTPLAN__VARS["ONLY_LAST_PLAN"]} ; then
+            keys=(${keys[-1]})
+        fi
+        Shotplan__recurseReadForNullsThrougInheritance "${selectedPlanName}" prelude prelude "${PLAN_CATEG}" || exit -2
+        Shotplan__recurseReadForNullsThrougInheritance "${selectedPlanName}" epilog epilog "${PLAN_CATEG}" || exit -2
+        YAML__get "$stderrHandlingCfgPath.output" output
+        Shotplan__recurseReadForNullsThrougInheritance "${selectedPlanName}" step step "${PLAN_CATEG}" || exit -2
+        #echo "STEP: '$step'"|sed -E "s/\\\n//g"
+        step="$(echo "$step"|sed -E "s/\\\n//g")"
+        epilog="$(echo "$epilog"|sed -E "s/\\\n//g")"
+        prelude="$(echo "$prelude"|sed -E "s/\\\n//g")"
+
+#_log_vars prelude epilog step
+        #exit 0
+        if [ "$output" = null ] || [ -z "$output" ] ; then
+            output="${outputDir}/_screenshot_${selectedPlanName}.adoc"
+        fi
+
+        local generatePlanTestReport=true
+        if ! ${SHOTPLAN__VARS["GENERATE_REPORT"]} ; then
+            output="/dev/null"
+            generatePlanTestReport=false
+        fi
+
+        if ${SHOTPLAN__VARS["GENERATE_FOR_MANPAGE"]} || ${SHOTPLAN__VARS["GENERATE_OUTPUTFILE_LIST"]} ; then
+            output="/dev/null"
+            generatePlanTestReport=false
+            window_id="?manpage"
+        fi
+
+        YAML__get "$planCfgPath._title" PLAN_TITLE
+        YAML__get "$planCfgPath._information" planInfo
+        YAML__get "$planCfgPath._usage" USAGE
+        YAML__get "$planCfgPath._usage-info" USAGE_INFO
+        if [ "$planInfo" == null ] ; then planInfo=""; fi
+        if [ "$USAGE" == null ] ; then USAGE=""; fi
+        if [ "${USAGE_INFO}" == null ] ; then USAGE_INFO=""; fi
+
+        local ignCommentForManage=false
+        if YAML__get_bool "$planCfgPath._ignore-comment-for-manpage" ignCommentForManage true 2>/dev/null; then
+            if [ "$ignCommentForManage" == null ] || [ -z "$ignCommentForManage" ]  ; then
+                ignCommentForManage=false
+            fi
+        fi
+
+        if [ ! -z "${planInfo}" ] && ! ${SHOTPLAN__VARS["GENERATE_FOR_MANPAGE"]} && ! ${SHOTPLAN__VARS["GENERATE_OUTPUTFILE_LIST"]}; then
+            Term__clear
+            mp -v         
+            Term__printBanner "${planInfo}" "_" "|" " " "-" 1 0
+            read -n1 -r -p "Press a key to continue or CTRL-C" _press2toContinue
+        fi
+
+        if ${SHOTPLAN__VARS["GENERATE_FOR_MANPAGE"]} ; then
+cat << EOF
+
+${PLAN_TITLE}
+EOF
+        elif  ${SHOTPLAN__VARS["GENERATE_OUTPUTFILE_LIST"]} ; then
+            :
+        else
+            _log_high "EXECUTING PLAN '$selectedPlanName'"
+        fi
+
+
+        local runFilter=""
+        YAML__get "$planCfgPath._filter" runFilter 
+        if YAML__isntVoid runFilter ; then
+            eval "$runFilter"
+            if [ $? -eq 0 ] ; then
+                echo "Test plan '${selectedPlanName}' skipped according to fulfilled filter condition ${runFilter}"
+                continue
+            fi
+        fi
+
+        #YAML__read "$planCfgPath._categories" PLAN_CATEG
+
+        prelude=$(echo "$prelude"|sed 's/"/\\"/g')
+        local firstStep=true
+        for i in "${keys[@]}" ; do
+            local skipTest=false
+            local screenkeyboard=true
+
+            if [[ "$i" =~ ^_.* ]] ; then continue ; fi
+
+            if YAML__get_bool "$planCfgPath.${i}.ignore" ignoreCase 2>/dev/null; then
+                if $ignoreCase ; then continue ; fi
+            fi
+
+            # Read initialize term size with default of plan, if any
+            readOverridingTermSize "$planCfgPath" termheight termwidth
+
+            YAML__get "$planCfgPath.${i}.name" name
+            YAML__get "$planCfgPath.${i}.live-recording" isliverecording
+            YAML__get_bool "$planCfgPath.${i}.screen-keyboard" screenkeyboard true
+            YAML__get "$planCfgPath.${i}.manual" manualtestexe
+            YAML__get "$planCfgPath.${i}.command" command
+            YAML__get "$planCfgPath.${i}.command-display" commandDisplay
+            YAML__get "$planCfgPath.${i}.pre-command" precommand
+            YAML__get "$planCfgPath.${i}.pre-command-display" precommandDisplay
+            YAML__get "$planCfgPath.${i}.post-command" postcommand
+            YAML__get "$planCfgPath.${i}.post-command-display" postcommandDisplay
+            YAML__get "$planCfgPath.${i}.comment" comment
+            YAML__get_bool "$planCfgPath.${i}.skip" skipTest true
+
+            if $skipTest ; then echo && continue ; fi
+
+            YAML__get "$planCfgPath.${i}.input" requiredInput
+            readOverridingTermSize "$planCfgPath.${i}" termheight termwidth
+
+            if [ "$manualtestexe" = null ] || [ -z "$manualtestexe" ] ; then
+                manualtestexe="no"
+            fi
+
+            if [ "$isliverecording" = null ] || [ -z "$isliverecording" ] ; then
+                isliverecording="no"
+            fi
+
+            if [ "$comment" = null ] || [ -z "$comment" ] ; then
+                comment=""
+            fi
+            if [ "$commandDisplay" = null ] || [ -z "$commandDisplay" ] ; then
+                commandDisplay="$command"
+            fi
+            if [ "$precommandDisplay" = null ] || [ -z "$precommandDisplay" ]; then
+                precommandDisplay="$precommand"
+            fi
+            if [ "$precommand" = null ] || [ -z "$precommand" ] ; then
+                precommand=""
+                precommandDisplay=""
+            fi
+            if [ "$postcommandDisplay" = null ] || [ -z "$postcommandDisplay" ]; then
+                postcommandDisplay="$postcommand"
+            fi
+            if [ "$postcommand" = null ] || [ -z "$postcommand" ] ; then
+                postcommand=""
+                postcommandDisplay=""
+            fi
+            #echo "output: $planCfgPath.${i}.command, $output, item $i $name $command"
+
+:<<'EOF'
+"${SHOTPLAN__VARS["MYDIR"]}/getsshot.sh" "${__app}" "$selectedPlanName" "${PLAN_TITLE}" "$i" "$name" "$commandDisplay" "$command" "$precommandDisplay" "$precommand"  "$postcommandDisplay" "$postcommand" "$comment" "$step" "${window_id}" "${image_folder}" "${image_folder2}" "$output"
+
+"${SHOTPLAN__VARS["MYDIR"]}/catch-obs-recordings.sh" "${__app}" "$selectedPlanName" "${PLAN_TITLE}" "$i" "$name" "$manualtestexe" "$commandDisplay" "$command" "$comment" "$step" "${window_id}" "${image_folder}" "${image_folder2}" "$output"
+
+    IMG_PATH="$(echo "${__app}_sshot_${selectedPlanName}_${i}.png")"
+    targetImageFileName="vid_${name}.${ext}"
+
+EOF
+
+
+
+            if ${SHOTPLAN__VARS["GENERATE_FOR_MANPAGE"]} || ${SHOTPLAN__VARS["GENERATE_OUTPUTFILE_LIST"]} ; then
+                if $ignCommentForManage ; then comment="" ; fi
+
+                # If plan title and step title (img_title) share more than 10 trailing chars
+                # we skip the step tile
+                local cmdDesc="$command"
+                Shotplan__removePreprocChar cmdDesc
+                local stepDesc=""
+                local stepDescOriginal=""
+                local COMMENT_FIRST=""
+                # Do take only first line of comment
+                Str__trim "${comment}" comment
+                if [ -z "${comment}" ] ; then
+                    stepDesc="${name}"
+                else
+                    COMMENT_FIRST="$(echo "$comment"|head -n1)"
+                    stepDesc="${name}
+  "
+                fi
+                stepDescOriginal="$stepDesc"
+
+                local commonTailStr=""
+                Str__nbCommonEndString "${name}" "${PLAN_TITLE}" commonTailStr
+                #echo "tested   "${IMG_TITLE}" VS "${PLAN_TITLE}" nbCommonEndString:'${nbCommonEndString}'  "
+                if [ ${#commonTailStr} -ge 12 ] ; then
+                    #echo "${PLAN_TITLE} NOW IGNORED ! "
+                    stepDesc=""
+                fi
+
+
+                if ${SHOTPLAN__VARS["GENERATE_OUTPUTFILE_LIST"]} ; then
+
+                    # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                    # TODO when generating for online the name of the category shall be generated instead of the chapter name
+                    # make a mapping between logical category names and readable names
+                    # ensure same order. See GALERY of mountpilot
+                    # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                    if [ "$isliverecording" = "yes" ] ; then
+                        echo "vid_${name// /_}.mp4:"
+                    else
+                        echo "${__app}_sshot_${selectedPlanName}_${i}.png:"
+                    fi                    
+                    Str__trim "$PLAN_TITLE" PLAN_TITLEtrimmed
+                    echo "  chapter: ${PLAN_TITLEtrimmed}"
+                    Str__trim "$stepDescOriginal" stepDescOriginalTrimmed
+                    echo "  title: $stepDescOriginalTrimmed"
+:<<'EOF'
+                    Str__indent 10 stepDescOriginal
+                    Str__trim "$stepDescOriginal" stepDescOriginalTrimmed
+                    if [ ! -z "$stepDescOriginalTrimmed" ] ; then  echo "$stepDescOriginal" ; fi
+EOF
+                    if [ ! -z "$COMMENT_FIRST" ] ; then
+                        echo "  comment: | "
+                        Str__indent 13 COMMENT_FIRST
+                        Str__trim "$COMMENT_FIRST" COMMENT_FIRSTTrimmed
+                        if [ ! -z "$COMMENT_FIRSTTrimmed" ] ; then echo "$COMMENT_FIRST" ; fi
+                    fi
+                    continue
+                fi
+
+                if [ ! -z "${COMMENT_FIRST}" ] || [ ! -z "${stepDesc}" ]; then 
+                    echo
+                    # Print the step description lines
+                    local __line=""
+                    while IFS='' read -r __line ; do  
+                        Str__trim "$__line" __line
+                        if [ ! -z "$__line" ] ; then 
+                            echo "  # $__line"|envsubst
+                        fi
+                    done <<< "${stepDesc}"
+                    # Print the comment lines
+                    __line=""
+                    while IFS='' read -r __line ; do  
+                        Str__trim "$__line" __line
+                        if [ ! -z "$__line" ] ; then 
+                            echo "  # $__line"|envsubst
+                        fi
+                    done <<< "${COMMENT_FIRST}"
+                fi      
+
+                # Print the command lines
+                local _cmdLine=""
+                while IFS='' read -r _cmdLine
+                do
+                    echo "   \$ $_cmdLine"|envsubst # Extra indent space added for real manpage to put it on a new line
+
+                done <<< "${cmdDesc}"
+                #echo "  \$ $cmdDesc"
+                continue
+            else
+            #_log_vars requiredInput
+                #if [ "$requiredInput" != null ] && [ ! -z "$requiredInput" ] ; then
+                    reqInputKeys=()
+                    reqInputKeys=($(YAML__keys "$planCfgPath.${i}.input" 2>/dev/null))
+                    #echo "REQUIRED ONIUT: $requiredInput '$reqInputKeys'"
+                    for reqInputKey in "${reqInputKeys[@]}" ; do
+                        #echo "KEY: $reqInputKey"
+                        local enteredValue
+                        local message
+                        enteredValue="$(echo "\$${reqInputKey}"|envsubst)"
+
+                        if ${SHOTPLAN__VARS["force-defaults"]} && [ ! -z "${enteredValue}" ]; then 
+                            _log "Using default env variable ${reqInputKey}='${enteredValue}'"
+                        else
+                            YAML__get "$planCfgPath.${i}.input.${reqInputKey}" message
+                            read -r -p "$message (default: '${enteredValue}'): " enteredValue
+                            if [ ! -z "${enteredValue}" ] ; then
+                                local varDefinition="export ${reqInputKey}=\"${enteredValue}\""
+                                _log "$varDefinition"
+                                eval "${varDefinition}"
+                            fi
+                        fi
+                    done
+                #fi
+            fi
+
+            if $veryFirstStep ; then 
+                # This is to avoid to display the below menu when no test 
+                # at all was run yet
+                veryFirstStep=false
+            else
+                if ${SHOTPLAN__VARS["INTERACTIVE"]} ; then 
+                    read -r -n1 -p "Press <enter> to continue with next test '${selectedPlanName}' or 's' to skip or 'a' to abort" contTestQ
+                    if [ "${contTestQ}" = 's' ] ; then echo && continue ; fi
+                    if [ "${contTestQ}" = 'a' ] ; then echo && return 1; fi
+                fi
+            fi
+
+            # Only modify the output adoc when the test was not skipped 
+            # or test session aborted above. Update output only when 
+            # first step is actually gonna be executed 
+            if $firstStep ; then
+                firstStep=false
+
+                #echo "TITLE : ${PLAN_TITLE}, prelude $prelude"
+                # Perform an eval, because some variables like PLAN_TITLE
+                # must be evaluated
+                eval "echo \"$prelude\" > "$output"" # Prelude may refer to PLAN_TITLE
+            fi
+
+
+            if $generatePlanTestReport ; then
+                Term__resize $termheight $termwidth
+                Term__clear
+                # Obsolete. A release now can contain REVISION.txt containing this info
+                #TESTED SRC: revision ${__appRevision}, PATH: ${__appsrcdir}
+                #TEST BENCH SRC: revision ${__testbenchRevision}
+            fi
+
+                local testedAppHash=$(${__app} --hash)
+                local testbenchHash=$(${__testbench} --hash)
+                local shellapiHash=$(genapp --hash)
+
+                if ! $generatePlanTestReport ; then
+                    cat << EOF
+
+
+**************************************************************************
+EOF
+                fi
+                cat << EOF
+TESTED APP: ${__app} v$(${__app} --version-num), rev:$(${__app} --revision), hash:${testedAppHash:0:16}, $(which ${__app})
+TEST BENCH: ${__testbench} v$(${__testbench} --version-num), rev:$(${__testbench} --revision), hash:${testbenchHash:0:16},   $(which ${__testbench})
+SHELL API: $(genapp --version-num), rev:$(genapp --revision), hash:${shellapiHash:0:16},  $(which genapp)
+SHOTPLAN: $(Shotplan__versionnum), rev:$(Shotplan__revision), hash:$(Shotplan__hash),  $(realpath "$0")
+PLAN: ${PLAN_TITLE} (${selectedPlanName})
+STEP: ${name} , CATEGORIES: $(echo ${PLAN_CATEG})
+DATE: $(date +'%D %R')
+**************************************************************************
+
+EOF
+
+            #_log_vars commandDisplay
+            local stepResult=0
+
+            if [ "$isliverecording" = "yes" ] ; then
+                # For video recording, window id bears a specific meaning and use to
+                # transmit configuration parameters
+:<<'EOF' # PLEASE CONFIRM IN MOUNTPILOT THAT THIS IS OBSOLETE
+                if ! Str__startsWith "$window_id" "\?" ; then
+                    window_id="${__app}"
+                fi
+EOF
+                # By default, there's always a screenkeyboard shown, unless told otherwise
+                if ! $screenkeyboard ; then 
+                    window_id="no-screenkeyboard"; 
+                fi
+
+                "${SHOTPLAN__VARS["MYDIR"]}/catch-obs-recordings.sh" "${__app}" "$selectedPlanName" "${PLAN_TITLE}" "$i" "$name" "$manualtestexe" "$commandDisplay" "$command" "$comment" "$step" "${window_id}" "${image_folder}" "${image_folder2}" "$output"
+                stepResult=$?
+            else
+                "${SHOTPLAN__VARS["MYDIR"]}/getsshot.sh" "${__app}" "$selectedPlanName" "${PLAN_TITLE}" "$i" "$name" "$commandDisplay" "$command" "$precommandDisplay" "$precommand"  "$postcommandDisplay" "$postcommand" "$comment" "$step" "${window_id}" "${image_folder}" "${image_folder2}" "$output"
+                stepResult=$?
+            fi
+            if [ $stepResult -eq 0 ] ; then stepResult=true ; else stepResult=false ; fi
+            plan_results["${__app}_${selectedPlanName}_${i}"]=${stepResult}
+            if ! $stepResult ; then overall_result=false; fi
+
+            if ! $stepResult ; then
+                _log_err ""
+                _log_err "FAILED! STEP: ${name}"
+                #_log_err "ABORTED PLAN: ${PLAN_TITLE} (${selectedPlanName})"
+                _log_err "PLEASE FIX"
+                _log_err ""
+                #break
+            fi
+
+        done
+
+        echo "$epilog" >> "$output"
+        if $generatePlanTestReport ; then
+            echo "include::$(basename "${output}")[leveloffset=+0]"
+            echo "include::$(basename "${output}")[leveloffset=+0]"|xclip
+        fi
+    done
+
+    if ${SHOTPLAN__VARS["LIST_CATEGORY"]} ; then
+        local sortedCatList=""
+        for planCat in "${availableCategories[@]}" ; do
+            sortedCatList="$sortedCatList
+$planCat"
+        done
+        echo "$sortedCatList"|sort
+        echo
+        echo "Run a category with following command"
+        echo "$(basename "$0") $(realpath --relative-to "$(pwd)" "${SHOTPLAN__VARS["PLAN_FILE_PATH"]}") -C <CATEGORY>"
+        #echo "$(realpath --relative-to "$(pwd)" "$0") $(realpath --relative-to "$(pwd)" "${SHOTPLAN__VARS["PLAN_FILE_PATH"]}") -C <CATEGORY>"
+
+        echo
+        echo "Run a specific plan"
+        echo "$(basename "$0") $(realpath --relative-to "$(pwd)" "${SHOTPLAN__VARS["PLAN_FILE_PATH"]}") <PLAN ID>"
+
+        echo
+        echo -n "To list the plan, press a key or CTRL-C to quit"
+        read -n1 press
+        echo
+        $0 "${SHOTPLAN__VARS["PLAN_FILE_PATH"]}" -P
+    fi
+
+    if ${SHOTPLAN__VARS["executePlan"]} && ! ${SHOTPLAN__VARS["GENERATE_FOR_MANPAGE"]} && ! ${SHOTPLAN__VARS["GENERATE_OUTPUTFILE_LIST"]} ; then
+
+    #Term__clear 
+        if $overall_result ; then
+    cat << 'EOF'
+
+**************************************************************************
+
+SUCCESS
+
+**************************************************************************
+EOF
+
+            read -n1 -p "Press a key to exit" entry
+
+            return 0
+        else
+cat << 'EOF'
+**************************************************************************
+
+FAIL
+
+**************************************************************************
+Details:
+
+EOF
+            local plan_test_res
+            local plan_test_id
+            for plan_test_id in "${!plan_results[@]}" ; do
+                plan_test_res="${plan_results[$plan_test_id]}"
+                if ! $plan_test_res ; then
+                    _log_status test " - $plan_test_id"
+                    _log_status_end fail
+                fi
+            done
+
+            return 1
+        fi
+    fi
+
+    read -n1 -p "Press a key to exit" entry
+
+}
+
+
+allArgs=("$@")
+if [ $# -eq 1 ] ; then 
+    allArgs+=("--cat")
+fi
+
+if _main "${allArgs[@]}" ; then
+        if ${SHOTPLAN__VARS["GENERATE_FOR_MANPAGE"]} || ${SHOTPLAN__VARS["GENERATE_OUTPUTFILE_LIST"]} ; then
+            exit 0 # This is avoid the ctrl chars that may added by the framework
+        else
+            _quit "Shotplan has finished."
+        fi
+else
+        _exit -1 "Operation ended with a failure. Please check above messages."
+fi
+
