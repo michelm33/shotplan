@@ -1,0 +1,71 @@
+ifndef::image_fmt[]
+:image_fmt: svg
+endif::[]
+:toc: yes
+:toclevels: 4
+:stem:
+:sectnums:
+:sectnumlevels: 0
+:icons: font
+:homedir: .
+//:imagesdir: images
+:docinfo: shared
+:press: article
+:linkcss:
+ifdef::html[]
+:staticimgdir: ../images/bank/original/static
+:svgimgdir: ../images/vector
+endif::[]
+ifndef::html[]
+:staticimgdir: ../_images/bank/original/static
+:svgimgdir: ../_images/vector
+endif::[]
+:doubleslash: //
+:enterkey: enter key &#x21B5;
+:enterkeyshort: &#x21B5;
+:arrowupkey: &#x2191;
+:arrowdownkey: &#x2193;
+:homekey: &#x21F1;
+:endkey: &#x21F2;
+:pageupkey: &#x21DE;
+:pagedownkey: &#x21DF;
+:exampleimagewidth_smallscreen: 70%
+:paypal: https://www.paypal.com/donate/?hosted_button_id=G2QSV9ZD4EB4A
+:patreon: https://www.patreon.com/14930736/join
+:appdir: /home/michel/riffian/Data/Data/admin/linux/shotplan
+
+== Overview 
+
+*shotplan* is a test execution and reporting tool which enables to define and execute tests launched and controlled by script.
+
+The tests to run and the control scripts are defined in a YAML configuration file where the sequence of tests are defined and programmed in script. The YAML file is also called test plan or shot plan, and is by convention named `shotplan.yml`.
+
+A test plan splits into a sequence of test cases (also called test plans), in which a sequence of test steps are defined. 
+
+shotplan reports about each executed test and its result on the standard output, including a dated test banners indicating version and revision control numbers of tested items, test tools and dependencies.
+
+Shotplan takes its name by the fact that the tool is capable of producing screenshots and video captures for executed tests.
+
+== Installation
+
+[%hardbreaks]
+`wget https://slashetc.fr/download/shotplan_1.0-0_amd64.deb`
+`sudo dpkg -i shotplan_1.0-0_amd64.deb`
+
+Alternatively, a free installation inside a preselected folder can be carried out from the zip as follows:
+
+[%hardbreaks]
+`wget https://slashetc.fr/download/shotplan_1.0-0.zip`
+`unzip shotplan_1.0-0.zip`
+
+== Test plan format
+
+The tests are specified in child properties of user-defined names below the top `shotplan` property. A test is also called __test plan__. The test steps of a test are defined in child properties below the test property, which names have to be incrementing numbers starting from 1. 
+
+== Man page
+
+
+[code, role="css-manpage"]
+----
+include::{appdir}/MANPAGE.txt[]
+----
