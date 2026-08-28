@@ -1,4 +1,20 @@
 #!/bin/bash
+###############################################################################
+#
+# Shotplan test plan runner
+#
+# Copyright (c) 2024-2026 Michel Mehl. All rights reserved.
+#
+# ------------------------------------------------------------------------------
+#
+# This file contains the code related the usage and help documentation.
+#
+# ------------------------------------------------------------------------------
+#
+# Report bugs to michel.mehl@slashetc.fr
+#
+###############################################################################
+
 Shotplan__version() {
 
   local verfile="${SHOTPLAN__VARS["MYDIR"]}/VERSION.txt"
@@ -168,13 +184,13 @@ cat << EOF
 
 Arguments:
 
- <plan file path>       
+<plan file path>       
           The shotplan file where the tests are defined (YAML format)
  
- [<plan name>]           
+[<plan name>]           
           Optional: the name of the test (shot) plan to execute (instead of all).
  
- [<any string>]          
+[<any string>]          
           Optional: the providing of any third argument indicates only to run the last step of the specified shot plan.
 
 EOF

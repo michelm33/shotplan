@@ -8,6 +8,6 @@ Build-Depends: debhelper-compat (= 13)
 Package: shotplan
 Homepage: https://github.com/michelm33/shotplan
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, shell-api (>=1.0-0)
+Depends: ${shlibs:Depends}, ${misc:Depends}, shell-api (=1.1-2)
 Description: Test plan execution tool providing screenshots and videos reporting
  Test plan execution tool providing screenshots and videos reporting

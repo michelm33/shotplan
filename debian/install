@@ -3,10 +3,15 @@ CHANGELOG.txt /usr/bin/shotplan
 COPYRIGHT.txt /usr/bin/shotplan
 EXAMPLES.txt /usr/bin/shotplan
 getsshot.sh /usr/bin/shotplan
+GITHUB.txt /usr/bin/shotplan
+GPL-3.0.txt /usr/bin/shotplan
 LICENSE.txt /usr/bin/shotplan
 Makefile /usr/bin/shotplan
+MANPAGE.txt /usr/bin/shotplan
 pack /usr/bin/shotplan
+README.asciidoc /usr/bin/shotplan
 REVISION.txt /usr/bin/shotplan
+shell-api /usr/bin/shotplan
 shotplan /usr/bin/shotplan
 shotplan.8 /usr/bin/shotplan
 shotplan__help.sh /usr/bin/shotplan
@@ -14,4 +19,5 @@ shotplan_lib.sh /usr/bin/shotplan
 shotplan__options.sh /usr/bin/shotplan
 shotplan__vars.sh /usr/bin/shotplan
 syncfull.yml /usr/bin/shotplan
+update_vernum_in_files.sh /usr/bin/shotplan
 VERSION.txt /usr/bin/shotplan

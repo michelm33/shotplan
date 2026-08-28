@@ -21,6 +21,9 @@ VERSION=$(shell cat VERSION.txt)
 VERSION_DEB=$(shell awk -F'.' '{ printf("%s.%s-%s" ,$$1,$$2,$$3);}' VERSION.txt)
 VERSION_DEB_FOR_TARXV=$(shell awk -F'.' '{ printf("%s.%s_%s" ,$$1,$$2,$$3);}' VERSION.txt)
 VERSION_DEB_FOR_ZIP=$(shell awk -F'.' '{ printf("%s.%s-%s" ,$$1,$$2,$$3);}' VERSION.txt)
+VERSION_SHELLAPI=$(shell cat shell-api/VERSION.txt)
+VERSION_DEB_SHELLAPI=$(shell awk -F'.' '{ printf("%s.%s-%s" ,$$1,$$2,$$3);}' shell-api/VERSION.txt)
+
 PRODUCT=shotplan
 PKG=$(PRODUCT)-$(VERSION_DEB)
 DATE=$(shell LC_ALL=en_US.UTF-8 date --rfc-email)
@@ -36,6 +39,15 @@ all:
 
 .PHONY: man
 man: shotplan.8 man_install
+	@echo 
+	@echo "#################################"
+	@echo "Creating MANPAGE.txt from man pages"
+	@echo 
+	# Run manpage.txt generation in a terminal of a preselected
+	# width, because paging done by man is dependent of it
+	gnome-terminal --geometry 80x50+0+0 --title="shotplan"  --wait -- bash -c 'man shotplan > MANPAGE.txt'
+	#man shotplan > MANPAGE.txt
+	@if which arcv >/dev/null 2>/dev/null; then av diff >/dev/null ; if [ $$? -eq 0 ] ; then av -y co MANPAGE.txt >/dev/null; fi ; fi
 
 .PHONY: man_install
 man_install: shotplan.8
@@ -65,6 +77,7 @@ required_tools:
 	@[  `dpkg-query -W -f='$${db:Status-Abbrev}' dh-make` = "ii"  ] && echo "dh-make is installed" || sudo apt install dh-make
 
 check_uptodate: FORCE
+	update_vernum_in_files.sh
 	cd "$(ROOT_DIR)" && av check
 
 .PHONY: release
@@ -74,6 +87,15 @@ release: required_tools man release_no_man_internal
 .PHONY: release_no_man_internal
 release_no_man_internal: check_uptodate create_package update_website_ftp
 	@echo SUCCESS
+
+.PHONY: export
+export:
+	@echo 
+	@echo 
+	@echo "REQUESTING TO EXPORT RELEASE TO GITHUB WITH ARCV. CTRL-C TO ABORT"
+	@echo " IF ABORTED, TYPE 'make release_export' or 'av export' TO RESTART"
+	@echo 
+	@av export $(VERS_REL_DIR)
 
 .PHONY: build_release
 build_release: required_tools CHANGELOG.txt COPYRIGHT.txt VERSION.txt
@@ -122,6 +144,9 @@ build_release: required_tools CHANGELOG.txt COPYRIGHT.txt VERSION.txt
 	@#
 	@echo "----- CREATING THE DEBIAN CONTROL FILE"
 	@cp pack/debian/control $(VERS_REL_DIR)/debian/
+	@#
+	@echo "----- CREATING THE DEBIAN LINK FILE"
+	@cd $(VERS_REL_DIR) && echo "usr/bin/shell-api-$(VERSION_DEB_SHELLAPI) usr/bin/$(PRODUCT)/shell-api" > debian/links
 	@#
 	@echo "----- CREATING THE DEBIAN INSTALL FILES"
 	@cd $(VERS_REL_DIR) && ls -1|grep -v debian|awk '{ print $$1,"/usr/bin/shotplan" }' > debian/install

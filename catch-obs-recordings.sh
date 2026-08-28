@@ -1,11 +1,30 @@
 #!/bin/bash
+###############################################################################
+#
+# catch obs recording
+#
+# Copyright (c) 2026 Michel MEHL. All rights reserved.
+#
+# ------------------------------------------------------------------------------
+#
+# This file implements the main function of the catch obs recording tool
+# It executes a test based on precommand, command and postcommand and generates
+# a video capture with OBS based on a OBS collection name which is used
+# as configuration for the recording
+#
+# ------------------------------------------------------------------------------
+#
+# Report bugs to michel.mehl@slashetc.fr
+#
+###############################################################################
+
 declare -A CAR__VARS
 CAR__VARS["MY_DIR"]=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
 REC_VID_DIR=~/Videos/obs_recordings
 OBS_PID=0
 
 if [[ ! -v __SHELL_API_CORE_LOADED__ ]]; then
-    source "${CAR__VARS["MY_DIR"]}/../shell-api/shell-api-core.sh" "getshot"
+    source "${CAR__VARS["MY_DIR"]}/shell-api/shell-api-core.sh" "car"
 fi
 
 source "${CAR__VARS["MY_DIR"]}/shotplan_lib.sh"

@@ -71,9 +71,15 @@ Shotplan__exeShotCommand()
         for _cmdLine in "${arr[@]}" ; do
             local forceReplace=false
             local silentCmd=false
+            local ignoreReturnValue=false
 
             if Shotplan__removeSilentCommandPreprocChar _cmdLine ; then
                 silentCmd=true
+            fi
+            # If ? appears twice, then ignore returned result
+            if Shotplan__removeSilentCommandPreprocChar _cmdLine ; then
+                ignoreReturnValue=true
+                silentCmd=false
             fi
 
             if Shotplan__removePreprocChar _cmdLine ; then
@@ -97,13 +103,25 @@ Shotplan__exeShotCommand()
             fi
             #_log_vars _actualCmdLine
             if $forceReplace ; then
-                local cmdRes="$(eval "${_cmdLine}")"
+                local cmdRes=""
+                cmdRes="$(eval "${_cmdLine}")"
+                if [ $? -ne 0 ] ; then
+                    if ! $ignoreReturnValue ; then    
+                        echo "failed: $cmdRes" >&2
+                        return 1
+                    fi
+                fi
                 if $forceReplace ; then
                     Shotplan__replaceMappedStrings REPLACE_POST_MAP cmdRes
                 fi
                 echo "$cmdRes"
             else
-                eval "${_cmdLine}"
+                if ! eval "${_cmdLine}" ; then
+                    if ! $ignoreReturnValue ; then    
+                        echo "failed: $_cmdLine" >&2
+                        return 1
+                    fi
+                fi
             fi
         done
     fi

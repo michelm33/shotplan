@@ -1,7 +1,7 @@
 #!/bin/bash
 ###############################################################################
 #
-# Shotplan
+# Shotplan test plan runner
 #
 # Copyright (c) 2026 Michel MEHL. All rights reserved.
 #
@@ -58,17 +58,17 @@ SHOTPLAN__OPTION_LIST_ACTI["-a"]='SHOTPLAN__VARS["INTERACTIVE"]=false'
 
 
 
-SHOTPLAN__OPTION_LIST_SDESC["-T|--no-report"]="Switch off generation of run reports (default)"
+SHOTPLAN__OPTION_LIST_SDESC["-T|--no-report"]="Switch off generation of the AsciiDoc report fragments which include screenshots and videos (default)"
 SHOTPLAN__OPTION_LIST_DESC["-T|--no-report"]="
-Switches off the generation of the reports including the AsciiDoc document fragments and all screenshots
+Excludes the generation of the AsciiDoc report fragments which include screenshots and videos
 "
 SHOTPLAN__OPTION_LIST_ARGS["-T|--no-report"]="1"
 SHOTPLAN__OPTION_LIST_ACTI["-T|--no-report"]='SHOTPLAN__VARS["GENERATE_REPORT"]=false'
 
 
-SHOTPLAN__OPTION_LIST_SDESC["-R|--report"]="Switch on generation of run reports"
+SHOTPLAN__OPTION_LIST_SDESC["-R|--report"]="Switch on generation of the AsciiDoc report fragments which include screenshots and videos"
 SHOTPLAN__OPTION_LIST_DESC["-R|--report"]="
-Switches off the generation of the reports including the AsciiDoc document fragments and all screenshots
+Generates the AsciiDoc report fragments which include screenshots and videos
 "
 SHOTPLAN__OPTION_LIST_ARGS["-R|--report"]="1"
 SHOTPLAN__OPTION_LIST_ACTI["-R|--report"]='SHOTPLAN__VARS["GENERATE_REPORT"]=true'

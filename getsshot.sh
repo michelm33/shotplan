@@ -1,9 +1,27 @@
 #!/bin/bash
+###############################################################################
+#
+# getshot
+#
+# Copyright (c) 2026 Michel MEHL. All rights reserved.
+#
+# ------------------------------------------------------------------------------
+#
+# This file implements the main function of the getshot test runner and reporter
+# It executes a test based on precommand, command and postcommand and generates
+# a screenshot of the specified X window ID are the end of the tests.
+#
+# ------------------------------------------------------------------------------
+#
+# Report bugs to michel.mehl@slashetc.fr
+#
+###############################################################################
+
 declare -A GETSSHOT__VARS
 GETSSHOT__VARS["MY_DIR"]=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
 
 if [[ ! -v __SHELL_API_CORE_LOADED__ ]]; then
-    source "${GETSSHOT__VARS["MY_DIR"]}/../shell-api/shell-api-core.sh" "getshot"
+    source "${GETSSHOT__VARS["MY_DIR"]}/shell-api/shell-api-core.sh" "getshot"
 fi
 
 source "${GETSSHOT__VARS["MY_DIR"]}/shotplan_lib.sh"
@@ -138,9 +156,10 @@ getshot__main() {
     _log_dbg "GETSHOT main: cmd: $CMD"
     _log_dbg "IMG_PATH '$IMG_PATH'"
 
-    Shotplan__exeShotCommand "$PRECMD" 
-    Shotplan__exeShotCommand "$CMD" 
-    Shotplan__exeShotCommand "$POSTCMD" 
+echo
+    Shotplan__exeShotCommand "$PRECMD" || _exit -1 "precommand failed: $PRECMD"
+    Shotplan__exeShotCommand "$CMD" || _exit -1 "command failed: '$CMD'"
+    Shotplan__exeShotCommand "$POSTCMD" || _exit -1 "postcommand failed: '$POSTCMD'"
     sync
     sleep 1
 
