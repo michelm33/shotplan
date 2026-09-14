@@ -84,6 +84,17 @@ Please check the official documentation at https://slashetc.fr/en/developertools
 * Test plan execution workflow
 * Other information...
 
+== Development
+
+Development can be pushed forward via this GitHub page:
+
+[source=bashrc]
+----
+git clone https://github.com/michelm33/shotplan
+----
+
+You'll need to create a symbol link to a release or development version of `shell-api`. Please check page https://slashetc.fr/en/developertoolsforlinux/shellapi for installing either a release or a zip of the library.
+
 == References
 
 Shotplan was used to validate the following tools:
