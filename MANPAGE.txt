@@ -82,23 +82,32 @@ SYNOPSIS
               Assume 'Yes' when prompted for confirmation
 
 DESCRIPTION
-       shotplan is a test execution and reporting tool which enables to define
-       and execute tests launched and controlled by script.
+       shotplan is a tool for implementing full application test benches  with
+       automated  test  execution,  output  verification  and  reporting incl.
+       screenshooting and video capturing.
 
-       The tests to run and the control scripts are defined in a YAML configu‐
-       ration file where the sequence of tests are defined and  programmed  in
-       script.  The YAML file is also called test plan or shot plan, and is by
-       convention named .
+       The tests are run in sequence from a test plan file in YAML format,  in
+       which tests are programmed and controlled via bash scriptlets.
 
-       A test plan splits into a sequence of  test  cases  (also  called  test
-       plans), in which a sequence of test steps are defined.
+       A  test  plan splits into a sequence of test cases, in which a sequence
+       of numbered test steps are defined.
 
-       shotplan  reports  about each executed test and its result on the stan‐
-       dard output, including a dated test banners indicating version and  re‐
-       vision control numbers of tested items, test tools and dependencies.
+       shotplan reports about each executed test step and its  result  on  the
+       standard  output,  including  a timestamped identification banner which
+       specifies version and revision control numbers of  tested  items,  test
+       tools and dependencies.
 
-       Shotplan takes its name by the fact that the tool is capable of produc‐
-       ing screenshots and video captures for executed tests.
+       Shotplan  takes its name from the fact that the tool is also capable of
+       producing screenshots and video captures for executed tests.
+
+       shotplan is initially designed and used to automate  tests  for  system
+       commands and user CLI applications.
+
+       Notwithstanding, thanks to graphical automation tool like 'xdotool', it
+       is perfectly foreseeable to test graphical  application  by  triggering
+       mouse  and  keyboard  events.  NOTE: A full automated test process of a
+       graphical app would also require to compare the graphical output with a
+       reference image. This feature is not available yet.
 
 EXAMPLES
        Testing with reporting (screenshots)
