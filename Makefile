@@ -16,7 +16,7 @@
 # //////////////////////////////////////////////////////////////////////////////////////////
 #
 ROOT_DIR := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
-TARGET=/usr/share/man/man8/
+TARGET=/usr/share/man/man1/
 VERSION=$(shell cat VERSION.txt)
 VERSION_DEB=$(shell awk -F'.' '{ printf("%s.%s-%s" ,$$1,$$2,$$3);}' VERSION.txt)
 VERSION_DEB_FOR_TARXV=$(shell awk -F'.' '{ printf("%s.%s_%s" ,$$1,$$2,$$3);}' VERSION.txt)
@@ -30,6 +30,8 @@ DATE=$(shell LC_ALL=en_US.UTF-8 date --rfc-email)
 
 PROD_REL_DIR=../release/$(PRODUCT)/
 VERS_REL_DIR=$(PROD_REL_DIR)/$(PKG)
+WEBSITE_DIR=$(shell echo ~/riffian/Data/Documents/professionnel/SlashEtc/siteweb)
+
 EMAIL=michel.mehl@slashetc.fr
 
 .PHONY: FORCE
@@ -38,7 +40,7 @@ EMAIL=michel.mehl@slashetc.fr
 all:
 
 .PHONY: man
-man: shotplan.8 man_install
+man: shotplan.1 man_install
 	@echo 
 	@echo "#################################"
 	@echo "Creating MANPAGE.txt from man pages"
@@ -47,24 +49,24 @@ man: shotplan.8 man_install
 	# width, because paging done by man is dependent of it
 	gnome-terminal --geometry 80x50+0+0 --title="shotplan"  --wait -- bash -c 'man shotplan > MANPAGE.txt'
 	#man shotplan > MANPAGE.txt
-	@if which arcv >/dev/null 2>/dev/null; then av diff >/dev/null ; if [ $$? -eq 0 ] ; then av -y co MANPAGE.txt >/dev/null; fi ; fi
+	@if which arcv >/dev/null 2>/dev/null; then av diff --fmt=plain >/dev/null ; if [ $$? -eq 0 ] ; then av -y co MANPAGE.txt >/dev/null; fi ; fi
 
 .PHONY: man_install
-man_install: shotplan.8
+man_install: shotplan.1
 	@echo 
 	@echo "#################################"
 	@echo "Installing man pages and building gzip for $(TARGET)/$<"
 	@echo 
-	@if which arcv >/dev/null 2>/dev/null; then av diff >/dev/null ; if [ $$? -eq 0 ] ; then av -y co $< >/dev/null; fi ; fi
+	@if which arcv >/dev/null 2>/dev/null; then av diff --fmt=plain >/dev/null ; if [ $$? -eq 0 ] ; then av -y co $< >/dev/null; fi ; fi
 	sudo install -g 0 -o 0 -m 0644 $< $(TARGET)
 	sudo gzip -f $(TARGET)/$<
 
-shotplan.8: required_help2man FORCE
+shotplan.1: required_help2man FORCE
 	@echo 
 	@echo "#################################"
 	@echo "Creating manpage with help2man"
 	@echo 
-	help2man -L en_EN@euro --no-info --section 8 --name "Test plan execution tool providing screenshots and videos reporting" --help-option="--man" --output=$@ ./shotplan
+	help2man -L en_EN@euro --no-info --section 1 --name "Test plan execution tool providing screenshots and videos reporting" --help-option="--man" --output=$@ ./shotplan
 # --manual="System Administration Utilities"
 
 .PHONY: required_help2man
@@ -85,7 +87,7 @@ release: required_tools man release_no_man_internal
 	@echo SUCCESS
 
 .PHONY: release_no_man_internal
-release_no_man_internal: check_uptodate create_package update_website_ftp
+release_no_man_internal: check_uptodate create_package web_download ftp
 	@echo SUCCESS
 
 .PHONY: export
@@ -152,8 +154,8 @@ build_release: required_tools CHANGELOG.txt COPYRIGHT.txt VERSION.txt
 	@cd $(VERS_REL_DIR) && ls -1|grep -v debian|awk '{ print $$1,"/usr/bin/shotplan" }' > debian/install
 	@#
 	@echo "----- DEBIAN MANPAGE FILE"
-	@cp shotplan.8 $(VERS_REL_DIR)/debian/$(PRODUCT).8
-	@echo "debian/shotplan.8" > $(VERS_REL_DIR)/debian/$(PRODUCT).manpages
+	@cp shotplan.1 $(VERS_REL_DIR)/debian/$(PRODUCT).1
+	@echo "debian/shotplan.1" > $(VERS_REL_DIR)/debian/$(PRODUCT).manpages
 	@#
 	@echo "----- CLEANUP EXAMPLE FILES"
 	@rm -rf $(VERS_REL_DIR)/debian/*.ex 2>/dev/null || echo  # example folders
@@ -191,13 +193,30 @@ build_package_cleanup:
 
 
 .PHONY: update_website_ftp
-update_website_ftp:
+ftp:
 	@echo 
 	@echo 
 	@echo "UPLOADING TO FTP"
 	@echo 
 	@sf -F -y && echo && echo '>>>>>>>>>>>>>>> SUCCESS <<<<<<<<<<<<<<<<<<<<' ||  echo '!!!!!!!!!!!!!!!! FAIL !!!!!!!!!!!!!!!!'
 	@echo 
+
+.PHONY: web_download
+web_download:
+	@echo 
+	@echo 
+	@echo "UPDATING DOWNLOAD PAGE"
+	@echo 
+	@tools/update-web-download-page.sh "$(WEBSITE_DIR)/developertoolsforlinux/pages/shotplan/shotplan_1_homepage.adoc" "$(PRODUCT)" "$(VERSION_DEB)" "$(VERSION_DEB_FOR_ZIP)"  && echo && echo '>>>>>>>>>>>>>>> SUCCESS <<<<<<<<<<<<<<<<<<<<' ||  echo '!!!!!!!!!!!!!!!! FAIL !!!!!!!!!!!!!!!!'
+
+
+.PHONY: web
+web: 
+	@echo 
+	@echo "UPDATING REVISION LOG WEB PAGES"
+	@echo 
+	av log --fmt=adoc --from=$(shell av repo latest-release-rev) --to=0 > "$(WEBSITE_DIR)/developertoolsforlinux/pages/_topics/shotplan/shotplan-cm-full-log.adoc"
+	av rel --fmt=adoc > "$(WEBSITE_DIR)/developertoolsforlinux/pages/_topics/shotplan/shotplan-cm-release-log.adoc"
 
 # an alias for update_website_ftp
 .PHONY: upload

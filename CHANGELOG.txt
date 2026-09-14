@@ -1,1 +1,4 @@
+* 3rd release along with arcv 1.2.1
+  - make file fix compared with 2nd release
+  - displaying result status for each run tests also when overall result is OK
 * First release

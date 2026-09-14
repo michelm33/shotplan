@@ -654,6 +654,16 @@ EOF
                 #fi
             fi
 
+
+            # In automatic mode, tests live recording are fully skipped
+            # and no report at all shall be generated
+            if $isliverecording && ! ${SHOTPLAN__VARS["INTERACTIVE"]} ; then
+                _log_warn "Live recording skipped for '$name' since interactive mode disabled"
+                plan_results["${__app}_${selectedPlanName}_${i}"]=true
+                continue
+            fi
+
+            # Manage interactive mode, requesting user input for how to continue
             if $veryFirstStep ; then 
                 # This is to avoid to display the below menu when no test 
                 # at all was run yet
@@ -744,17 +754,14 @@ EOF
                     window_id="no-screenkeyboard"; 
                 fi
 
-                if ${SHOTPLAN__VARS["INTERACTIVE"]} ; then 
-                    "${SHOTPLAN__VARS["MYDIR"]}/catch-obs-recordings.sh" "${__app}" "$selectedPlanName" "${PLAN_TITLE}" "$i" "$name" "$manualtestexe" "$commandDisplay" "$command" "$comment" "$step" "${window_id}" "${image_folder}" "${image_folder2}" "$output"                    
-                    stepResultCode=$?
-                else
-                    _log_warn "Live recording skipped since interactive mode disabled"
-                    stepResultCode=0
-                fi
+                "${SHOTPLAN__VARS["MYDIR"]}/catch-obs-recordings.sh" "${__app}" "$selectedPlanName" "${PLAN_TITLE}" "$i" "$name" "$manualtestexe" "$commandDisplay" "$command" "$comment" "$step" "${window_id}" "${image_folder}" "${image_folder2}" "$output"                    
+                stepResultCode=$?
             else
                 "${SHOTPLAN__VARS["MYDIR"]}/getsshot.sh" "${__app}" "$selectedPlanName" "${PLAN_TITLE}" "$i" "$name" "$commandDisplay" "$command" "$precommandDisplay" "$precommand"  "$postcommandDisplay" "$postcommand" "$comment" "$step" "${window_id}" "${image_folder}" "${image_folder2}" "$output"
                 stepResultCode=$?
             fi
+
+            # Record result and update overall result flag
             local stepResult=false
             if [ $stepResultCode -eq 0 ] ; then stepResult=true ; else stepResult=false ; fi
             plan_results["${__app}_${selectedPlanName}_${i}"]=${stepResult}
@@ -771,7 +778,13 @@ EOF
 
         done # FOR LOOP for each step
 
-        echo "$epilog" >> "$output"
+        # Generate the epilog for the test case, but only if actually at least one step was executed
+        # It can happen that no test is executed in case of a live recording test case while automatic mode
+        # is activated
+        if ! $firstStep ; then
+            echo "$epilog" >> "$output"
+        fi
+
         if $generatePlanTestReport ; then
             echo "include::$(basename "${output}")[leveloffset=+0]"
             echo "include::$(basename "${output}")[leveloffset=+0]"|xclip
@@ -809,10 +822,22 @@ $planCat"
 
 **************************************************************************
 
-OVERALL RESULT: SUCCESS !
+OVERALL RESULT: OK
 
 **************************************************************************
 EOF
+
+            local plan_test_res
+            local plan_test_id
+            for plan_test_id in "${!plan_results[@]}" ; do
+                plan_test_res="${plan_results[$plan_test_id]}"
+                _log_status test " - $plan_test_id"
+                if  $plan_test_res ; then
+                    _log_status_end ok
+                else
+                    _log_status_end fail
+                fi
+            done
 
             read -n1 -p "Press a key to exit" entry
 

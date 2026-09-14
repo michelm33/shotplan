@@ -230,9 +230,9 @@ $(_soptions SHOTPLAN__OPTION_LIST_DESC SHOTPLAN__OPTION_LIST_SDESC SHOTPLAN__OPT
 
 shotplan is a test execution and reporting tool which enables to define and execute tests launched and controlled by script.
 
-The tests to run and the control scripts are defined in a YAML configuration file where the sequence of tests are defined and programmed in script. The YAML file is also called test plan or shot plan, and is by convention named `shotplan.yml`.
+The tests to run and the control scripts are defined in a YAML configuration file where the sequence of tests are defined and programmed in script. The YAML file is also called test plan or shot plan, and is by convention named 'shotplan.yml'.
 
-A test plan splits into a sequence of test cases (also called test plans), in which a sequence of test steps are defined. 
+A test plan splits into a sequence of test cases, in which a sequence of test steps are defined. 
 
 shotplan reports about each executed test and its result on the standard output, including a dated test banners indicating version and revision control numbers of tested items, test tools and dependencies.
 

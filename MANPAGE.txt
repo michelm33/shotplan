@@ -1,4 +1,4 @@
-SHOTPLAN(8)             System Administration Utilities            SHOTPLAN(8)
+SHOTPLAN(1)                      User Commands                     SHOTPLAN(1)
 
 NAME
        Shotplan  -  Test  plan execution tool providing screenshots and videos
@@ -124,4 +124,4 @@ COPYRIGHT
 
        License terms written down in file LICENSE.txt
 
-Shotplan 1.0.1                     août 2026                       SHOTPLAN(8)
+Shotplan 1.1.1                  septembre 2026                     SHOTPLAN(1)

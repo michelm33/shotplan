@@ -36,38 +36,66 @@ endif::[]
 
 == Overview 
 
-*shotplan* is a test execution and reporting tool which enables to define and execute tests launched and controlled by script.
+shotplan is a tool for implementing full application test benches with automated test execution, output verification and reporting incl. screenshooting and video capturing.
 
-The tests to run and the control scripts are defined in a YAML configuration file where the sequence of tests are defined and programmed in script. The YAML file is also called test plan or shot plan, and is by convention named `shotplan.yml`.
+The tests are run in sequence from a test plan file in YAML format, in which tests are programmed and controlled via bash scriptlets. 
 
-A test plan splits into a sequence of test cases (also called test plans), in which a sequence of test steps are defined. 
+A test plan splits into a sequence of test cases, in which a sequence of numbered test steps are defined. 
 
-shotplan reports about each executed test and its result on the standard output, including a dated test banners indicating version and revision control numbers of tested items, test tools and dependencies.
+shotplan reports about each executed test step and its result on the standard output, including a timestamped identification banner which specifies version and revision control numbers of tested items, test tools and dependencies.
 
-Shotplan takes its name by the fact that the tool is capable of producing screenshots and video captures for executed tests.
+Shotplan takes its name from the fact that the tool is also capable of producing screenshots and video captures for executed tests.
+
+NOTE: The test plan file can hold any name, but by convention it is usually 'shotplan.yml'
+
+== Target applications
+
+shotplan is initially designed and used to automate tests for system commands and user CLI applications. 
+
+Notwithstanding, thanks to graphical automation tool like `xdotool`, it is perfectly foreseeable to test graphical application by triggering mouse and keyboard events. 
+
+NOTE: A full automated test process of a graphical app would also require to compare the graphical output with a reference image. This feature is not available yet.
 
 == Installation
 
-[%hardbreaks]
-`wget https://slashetc.fr/download/shotplan_1.1-0_amd64.deb`
-`sudo dpkg -i shotplan_1.1-0_amd64.deb`
+Shotplan installs in `/usr/bin/shotplan/`.
 
-Alternatively, a free installation inside a preselected folder can be carried out from the zip as follows:
+Dependencies are generally automatically installed by shotplan at runtime, with the exception of the biggest ones: imagemagick, obs-studio, vlc, for the following reasons:
 
-[%hardbreaks]
-`wget https://slashetc.fr/download/shotplan_1.1-0.zip`
-`unzip shotplan_1.1-0.zip`
+* Leave the choice for tester not seeking to produce screenshots and videos and thereby not installing those tools
+* Avoid automatic (failing) installation in docker container where it is not relevant anyway
 
-== Test plan format
+[source,bash,title="Debian system package (requires root rights)"]
+----
+sudo apt install imagemagick    # For making screenshots
+sudo apt install obs-studio     # For video captures
+sudo apt install vlc            # For visualizing video captures
 
-The tests are specified in child properties of user-defined names below the top `shotplan` property. A test is also called __test plan__. The test steps of a test are defined in child properties below the test property, which names have to be incrementing numbers starting from 1. 
+wget https://slashetc.fr/download/shotplan_1.1-1_amd64.deb 
+sudo dpkg -i shotplan_1.1-1_amd64.deb
+----
+
+== Documentation
+
+Please check the official documentation at https://slashetc.fr/en/developertoolsforlinux/shotplan/ that develops the following aspects:
+
+* Test reporting format
+* Test plan file format
+* Test plan execution workflow
+* Other information...
+
+== References
+
+Shotplan was used to validate the following tools:
+
+* link:https://slashetc.fr/en/developertoolsforlinux/arcv/arcv_documentation.html#_testing[arcv revision control tool,window=_blank]
+* link:https://slashetc.fr/en/products/mountpilot/mountpilot_documentation.html#_testing[mountpilot,window=_blank]
 
 == Man page
 
-
 [code, role="css-manpage"]
 ----
-SHOTPLAN(8)             System Administration Utilities            SHOTPLAN(8)
+SHOTPLAN(1)                      User Commands                     SHOTPLAN(1)
 
 NAME
        Shotplan  -  Test  plan execution tool providing screenshots and videos
@@ -193,6 +221,6 @@ COPYRIGHT
 
        License terms written down in file LICENSE.txt
 
-Shotplan 1.0.1                     août 2026                       SHOTPLAN(8)
+Shotplan 1.1.1                  septembre 2026                     SHOTPLAN(1)
 
 ----
