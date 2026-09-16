@@ -36,7 +36,7 @@ endif::[]
 
 == Overview 
 
-shotplan is a tool for implementing full application test benches with automated test execution, output verification and reporting incl. screenshooting and video capturing.
+shotplan is a tool for implementing automated test benches supporting test execution, output verification and reporting including screenshots and video captures.
 
 The tests are run in sequence from a test plan file in YAML format, in which tests are programmed and controlled via bash scriptlets. 
 
