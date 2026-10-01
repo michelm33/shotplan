@@ -19,7 +19,7 @@ Changes to apply when changing version:
     av pub
 
 - Export the release to GitHub, for example (change to the actual version number):
-    av export ../release/shotplan/shotplan-1.1-1
+    av export .
 
 - Update GitHub: create the tag and related release packages manually
 

@@ -207,7 +207,7 @@ web_download:
 	@echo 
 	@echo "UPDATING DOWNLOAD PAGE"
 	@echo 
-	@tools/update-web-download-page.sh "$(WEBSITE_DIR)/developertoolsforlinux/pages/shotplan/shotplan_1_homepage.adoc" "$(PRODUCT)" "$(VERSION_DEB)" "$(VERSION_DEB_FOR_ZIP)"  && echo && echo '>>>>>>>>>>>>>>> SUCCESS <<<<<<<<<<<<<<<<<<<<' ||  echo '!!!!!!!!!!!!!!!! FAIL !!!!!!!!!!!!!!!!'
+	@tools/update-web-download-page.sh "$(WEBSITE_DIR)/developertoolsforlinux/pages/shotplan/shotplan_1_documentation.adoc" "$(PRODUCT)" "$(VERSION_DEB)" "$(VERSION_DEB_FOR_ZIP)"  && echo && echo '>>>>>>>>>>>>>>> SUCCESS <<<<<<<<<<<<<<<<<<<<' ||  echo '!!!!!!!!!!!!!!!! FAIL !!!!!!!!!!!!!!!!'
 
 
 .PHONY: web

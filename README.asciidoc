@@ -74,8 +74,8 @@ sudo apt install vlc            # For visualizing video captures
 wget https://slashetc.fr/download/shell-api_1.1-3_amd64.deb 
 sudo dpkg -i shell-api_1.1-3_amd64.deb
 
-wget https://slashetc.fr/download/shotplan_1.1-1_amd64.deb 
-sudo dpkg -i shotplan_1.1-1_amd64.deb
+wget https://slashetc.fr/download/shotplan_1.1-2_amd64.deb 
+sudo dpkg -i shotplan_1.1-2_amd64.deb
 ----
 
 == Documentation

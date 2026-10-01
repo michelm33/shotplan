@@ -133,4 +133,4 @@ COPYRIGHT
 
        License terms written down in file LICENSE.txt
 
-Shotplan 1.1.1                  septembre 2026                     SHOTPLAN(1)
+Shotplan 1.1.2                   octobre 2026                      SHOTPLAN(1)

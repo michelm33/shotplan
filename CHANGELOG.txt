@@ -1,4 +1,21 @@
-* 3rd release along with arcv 1.2.1
+* Release 1.1.2
+
+  Release coming along with arcv 1.2.2 
+
+  - No functional change
+  - Added documentation updates that should have part in previous release. 
+
+* Release 1.1.1  
+
+  Release coming along with arcv 1.2.1
+
   - make file fix compared with 2nd release
   - displaying result status for each run tests also when overall result is OK
-* First release
+
+* Release 1.1.0  
+
+  Release coming along with arcv 1.2.0
+
+* Release 1.0.0  
+
+  First release used to test arcv revision control tool v1.0.0
